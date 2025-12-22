@@ -146,18 +146,37 @@ async def get_transcript(request: Request, url: str = Query(..., description="Th
         formatted_transcript = []
         full_text = ""
         for entry in transcript_list:
+            # Robust cleaning: Remove '>>', '>>>', [Music], (Laughter), etc.
+            text = entry.text
+            # Remove HTML entities if any
+            text = text.replace("&gt;&gt;", "").replace("&gt;", "")
+            # Remove literal >> and variations
+            text = re.sub(r'>>+', '', text) 
+            text = re.sub(r'\[.*?\]', '', text) # Remove [Music], [Applause]
+            text = re.sub(r'\(.*?\)', '', text) # Remove (Laughter)
+            clean_text = text.strip()
+            
+            if not clean_text:
+                continue
+                
             formatted_transcript.append({
-                "text": entry.text,
+                "text": clean_text,
                 "start": entry.start,
                 "duration": entry.duration
             })
-            full_text += entry.text + " "
+            full_text += clean_text + " "
+
+        # Backend Sentence Processing
+        full_text = full_text.strip()
+        # Split by . ! ? while keeping the delimiters, then group into logical lines
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', full_text) if s.strip()]
 
         return {
             "video_id": video_id,
             "info": video_info,
             "transcript": formatted_transcript,
-            "full_text": full_text.strip()
+            "full_text": full_text,
+            "sentences": sentences
         }
     except TranscriptsDisabled:
         raise HTTPException(status_code=404, detail="Transcripts are disabled for this video")
@@ -172,4 +191,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Enable reload for development
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
