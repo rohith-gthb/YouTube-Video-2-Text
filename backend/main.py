@@ -1,9 +1,10 @@
 import re
+import requests
+from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
-import yt_dlp
 
 app = FastAPI(title="YouTube Transcript API")
 
@@ -30,23 +31,41 @@ def extract_video_id(url: str) -> Optional[str]:
     return None
 
 def get_video_info(video_id: str):
-    """Fetches video metadata using yt-dlp."""
-    ydl_opts = {
-        'skip_download': True,
-        'quiet': True,
-        'no_warnings': True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
-            return {
-                "title": info.get("title"),
-                "thumbnail": info.get("thumbnail"),
-                "duration": info.get("duration"),
-                "author": info.get("uploader"),
-            }
-        except Exception as e:
-            return None
+    """Fetches video metadata using requests and BeautifulSoup (Safer Alternative)."""
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Extract title
+        title = ""
+        title_tag = soup.find("meta", property="og:title")
+        if title_tag:
+            title = title_tag["content"]
+        
+        # Extract thumbnail
+        thumbnail = ""
+        thumbnail_tag = soup.find("meta", property="og:image")
+        if thumbnail_tag:
+            thumbnail = thumbnail_tag["content"]
+            
+        # Extract author
+        author = ""
+        author_tag = soup.find("link", itemprop="name")
+        if author_tag:
+            author = author_tag["content"]
+        elif soup.find("span", itemprop="author"):
+            author = soup.find("span", itemprop="author").find("link", itemprop="name")["content"]
+
+        return {
+            "title": title or "Unknown Title",
+            "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
+            "author": author or "Unknown Author",
+        }
+    except Exception as e:
+        print(f"Error fetching metadata: {e}")
+        return None
 
 @app.get("/transcript")
 async def get_transcript(url: str = Query(..., description="The YouTube video URL")):
@@ -56,12 +75,17 @@ async def get_transcript(url: str = Query(..., description="The YouTube video UR
 
     video_info = get_video_info(video_id)
     if not video_info:
-        raise HTTPException(status_code=404, detail="Could not fetch video information")
+        # Fallback to basic info if scraping fails but video ID is valid
+        video_info = {
+            "title": "YouTube Video",
+            "thumbnail": f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
+            "author": "YouTube"
+        }
 
     try:
         ytt_api = YouTubeTranscriptApi()
         transcript_list = ytt_api.fetch(video_id)
-        # Format transcript for better consumption
+        
         formatted_transcript = []
         full_text = ""
         for entry in transcript_list:
