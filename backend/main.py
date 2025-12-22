@@ -1,17 +1,73 @@
 import re
+import os
+import random
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
+# List of common browser User-Agents for rotation
+# USER_AGENTS = [
+#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+#     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+#     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+#     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0",
+#     "Mozilla/5.0 (AppleScript; Macintosh) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+# ]
+
+# List of common browser User-Agents for rotation
+USER_AGENTS = [
+    # Chrome on Windows 10
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    
+    # Chrome on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    
+    # Firefox on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
+    
+    # Firefox on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:124.0) Gecko/20100101 Firefox/124.0",
+    
+    # Safari on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    
+    # Edge on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0"
+]
+
+
+
+def get_random_headers():
+    return {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+# Load environment variables
+load_dotenv()
+
+# Setup Rate Limiting
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="YouTube Transcript API")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Environment-based CORS
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,7 +90,7 @@ def get_video_info(video_id: str):
     """Fetches video metadata using requests and BeautifulSoup (Safer Alternative)."""
     url = f"https://www.youtube.com/watch?v={video_id}"
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=get_random_headers(), timeout=10)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
         
@@ -68,7 +124,8 @@ def get_video_info(video_id: str):
         return None
 
 @app.get("/transcript")
-async def get_transcript(url: str = Query(..., description="The YouTube video URL")):
+@limiter.limit("5/minute")
+async def get_transcript(request: Request, url: str = Query(..., description="The YouTube video URL")):
     video_id = extract_video_id(url)
     if not video_id:
         raise HTTPException(status_code=400, detail="Invalid YouTube URL")
