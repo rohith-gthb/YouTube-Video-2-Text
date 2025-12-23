@@ -167,9 +167,9 @@
                         class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
                         Video
                     </button>
-                    <button onclick="setMode('channel')" id="channel-mode-btn"
+                    <button onclick="setMode('batch')" id="batch-mode-btn"
                         class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 text-gray-400 hover:text-white">
-                        Channel
+                        Batch
                     </button>
                 </div>
             </div>
@@ -185,7 +185,7 @@
                                 d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                         </svg>
                     </div>
-                    <input type="text" id="youtube-url" placeholder="Paste YouTube Video URL here..."
+                    <input type="text" id="youtube-url" placeholder="Paste Video, Playlist, or Channel URL..."
                         class="w-full bg-transparent border-none focus:ring-0 text-white px-4 py-3 text-lg placeholder-gray-500 font-medium">
                     <button id="extract-btn" onclick="handleExtraction()"
                         class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all duration-300 active:scale-95 group">
@@ -228,7 +228,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="text-white font-bold text-xl" id="channel-name-display">Channel Videos</h3>
+                        <h3 class="text-white font-bold text-xl" id="batch-name-display">Batch Video List</h3>
                         <p class="text-indigo-400/60 text-sm font-medium" id="channel-video-count">Select videos to
                             transcribe</p>
                     </div>
@@ -298,6 +298,22 @@
                             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                 </button>
+
+                <!-- Progress Bar UI -->
+                <div id="batch-progress-container" class="hidden w-full max-w-xl space-y-4 fade-in">
+                    <div class="flex justify-between items-end mb-2">
+                        <span id="batch-status-text"
+                            class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Initializing...</span>
+                        <span id="batch-progress-percent" class="text-2xl font-black text-white">0%</span>
+                    </div>
+                    <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-white/5 p-0.5">
+                        <div id="batch-progress-bar"
+                            class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 rounded-full transition-all duration-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
+                            style="width: 0%"></div>
+                    </div>
+                    <p id="batch-video-status"
+                        class="text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest italic"></p>
+                </div>
             </div>
         </div>
 
@@ -397,29 +413,29 @@
         function setMode(mode) {
             currentMode = mode;
             const videoBtn = document.getElementById('video-mode-btn');
-            const channelBtn = document.getElementById('channel-mode-btn');
+            const batchBtn = document.getElementById('batch-mode-btn');
             const input = document.getElementById('youtube-url');
             const icon = document.getElementById('input-icon');
 
-            const channelVideoSection = document.getElementById('channel-video-list-section');
+            const batchSection = document.getElementById('channel-video-list-section');
             const resultSection = document.getElementById('result-section');
 
             if (mode === 'video') {
                 videoBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
                 videoBtn.classList.remove('text-gray-400');
-                channelBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
-                channelBtn.classList.add('text-gray-400');
+                batchBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
+                batchBtn.classList.add('text-gray-400');
                 input.placeholder = "Paste YouTube Video URL here...";
                 icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />`;
-                channelVideoSection.classList.add('hidden');
+                batchSection.classList.add('hidden');
             } else {
-                channelBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
-                channelBtn.classList.remove('text-gray-400');
+                batchBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
+                batchBtn.classList.remove('text-gray-400');
                 videoBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
                 videoBtn.classList.add('text-gray-400');
-                input.placeholder = "Paste YouTube Channel URL here...";
-                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />`;
-                channelVideoSection.classList.add('hidden'); // Stay hidden until list is fetched
+                input.placeholder = "Paste Channel or Playlist URL...";
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />`;
+                batchSection.classList.add('hidden');
                 resultSection.classList.add('hidden');
             }
         }
@@ -455,7 +471,7 @@
                 const response = await fetch(`${API_BASE}/channel/videos?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
 
-                if (!response.ok) throw new Error(data.detail || "Failed to fetch channel.");
+                if (!response.ok) throw new Error(data.detail || "Unable to fetch list. Check URL.");
 
                 channelVideos = data.videos;
                 renderVideoGrid(data.videos);
@@ -508,7 +524,13 @@
 
         async function downloadSelectedBatch() {
             const fetchBtn = document.getElementById('batch-download-btn');
+            const progressContainer = document.getElementById('batch-progress-container');
+            const progressBar = document.getElementById('batch-progress-bar');
+            const progressPercent = document.getElementById('batch-progress-percent');
+            const statusText = document.getElementById('batch-status-text');
+            const videoStatus = document.getElementById('batch-video-status');
             const errorMsg = document.getElementById('error-msg');
+
             const format = document.getElementById('channel-export-type').value;
             const includeTimestamps = document.getElementById('batch-include-timestamps').checked;
             const selectedIndices = Array.from(document.querySelectorAll('input[name="video-select"]:checked')).map(cb => parseInt(cb.value));
@@ -521,9 +543,14 @@
             const selectedVideos = selectedIndices.map(i => channelVideos[i]);
 
             errorMsg.classList.add('hidden');
-            fetchBtn.disabled = true;
-            const originalContent = fetchBtn.innerHTML;
-            fetchBtn.innerHTML = `<div class="loading-ring mr-2 text-white"></div> Processing ${selectedVideos.length} Videos...`;
+            fetchBtn.classList.add('hidden');
+            progressContainer.classList.remove('hidden');
+
+            // Initializing UI
+            progressBar.style.width = '0%';
+            progressPercent.innerText = '0%';
+            statusText.innerText = 'Initializing...';
+            videoStatus.innerText = `Starting download for ${selectedVideos.length} videos`;
 
             try {
                 const response = await fetch(`${API_BASE}/channel/zip?format=${format}&include_timestamps=${includeTimestamps}`, {
@@ -537,27 +564,70 @@
                     throw new Error(data.detail || "Batch extraction failed.");
                 }
 
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = `channel_batch_${format}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(downloadUrl);
-
-                fetchBtn.innerHTML = `<span>Download Complete!</span>`;
-                setTimeout(() => {
-                    fetchBtn.disabled = false;
-                    fetchBtn.innerHTML = originalContent;
-                }, 3000);
+                const { batch_id } = await response.json();
+                pollBatchStatus(batch_id);
             } catch (err) {
                 errorMsg.innerText = err.message;
                 errorMsg.classList.remove('hidden');
-                fetchBtn.disabled = false;
-                fetchBtn.innerHTML = originalContent;
+                fetchBtn.classList.remove('hidden');
+                progressContainer.classList.add('hidden');
             }
+        }
+
+        async function pollBatchStatus(batchId) {
+            const progressBar = document.getElementById('batch-progress-bar');
+            const progressPercent = document.getElementById('batch-progress-percent');
+            const statusText = document.getElementById('batch-status-text');
+            const videoStatus = document.getElementById('batch-video-status');
+            const fetchBtn = document.getElementById('batch-download-btn');
+            const progressContainer = document.getElementById('batch-progress-container');
+            const errorMsg = document.getElementById('error-msg');
+
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/batch/status/${batchId}`);
+                    const data = await response.json();
+
+                    if (!response.ok) throw new Error("Status polling failed.");
+
+                    const { status, progress, completed, total, error } = data;
+
+                    // Update UI
+                    progressBar.style.width = `${progress}%`;
+                    progressPercent.innerText = `${progress}%`;
+                    statusText.innerText = status === 'processing' ? 'Transcribing...' : status.toUpperCase();
+                    videoStatus.innerText = `Processed ${completed} of ${total} videos`;
+
+                    if (status === 'completed') {
+                        clearInterval(interval);
+                        statusText.innerText = 'ZIP READY!';
+                        videoStatus.innerText = 'Starting download...';
+
+                        // Trigger final download
+                        const downloadUrl = `${API_BASE}/batch/download/${batchId}`;
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = `transcription_batch_${batchId}.zip`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+
+                        setTimeout(() => {
+                            fetchBtn.classList.remove('hidden');
+                            progressContainer.classList.add('hidden');
+                        }, 5000);
+                    } else if (status === 'failed') {
+                        clearInterval(interval);
+                        throw new Error(error || "Background processing failed.");
+                    }
+                } catch (err) {
+                    clearInterval(interval);
+                    errorMsg.innerText = err.message;
+                    errorMsg.classList.remove('hidden');
+                    fetchBtn.classList.remove('hidden');
+                    progressContainer.classList.add('hidden');
+                }
+            }, 1000); // Poll every second
         }
 
         async function fetchTranscript() {
