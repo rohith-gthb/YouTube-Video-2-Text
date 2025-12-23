@@ -87,13 +87,15 @@
         }
 
         .loading-ring {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 1s ease-in-out infinite;
+            flex-shrink: 0;
+            aspect-ratio: 1/1;
         }
 
         @keyframes spin {
@@ -157,23 +159,44 @@
                 Professional-grade transcript extraction and analysis. Powered by AI. Used by researchers, content
                 creators, and learners worldwide.
             </p>
-        </div>
 
-        <!-- Search Bar -->
-        <div
-            class="glass p-2 rounded-[2rem] shadow-2xl transition-all duration-300 focus-within:ring-4 focus-within:ring-indigo-500/20 mb-20 group">
-            <div class="flex flex-col md:flex-row gap-2">
-                <input type="text" id="youtube-url" placeholder="Paste YouTube Video URL..."
-                    class="flex-1 bg-transparent border-none px-6 py-5 focus:outline-none text-xl text-white placeholder-gray-500">
-                <button onclick="fetchTranscript()" id="fetch-btn"
-                    class="btn-primary px-10 py-5 rounded-3xl font-bold text-lg flex items-center justify-center gap-2 group-focus-within:scale-[1.02]">
-                    <span>Extract Now</span>
-                    <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none"
-                        stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                    </svg>
-                </button>
+            <!-- Mode Toggle -->
+            <div class="flex justify-center mb-8">
+                <div class="inline-flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                    <button onclick="setMode('video')" id="video-mode-btn"
+                        class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20">
+                        Video
+                    </button>
+                    <button onclick="setMode('channel')" id="channel-mode-btn"
+                        class="px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 text-gray-400 hover:text-white">
+                        Channel
+                    </button>
+                </div>
+            </div>
+
+            <div class="max-w-3xl mx-auto mb-16 relative group">
+                <div
+                    class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000">
+                </div>
+                <div class="relative flex items-center bg-slate-900 rounded-2xl p-2 border border-white/10 shadow-2xl">
+                    <div class="pl-4 text-indigo-400">
+                        <svg id="input-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                        </svg>
+                    </div>
+                    <input type="text" id="youtube-url" placeholder="Paste YouTube Video URL here..."
+                        class="w-full bg-transparent border-none focus:ring-0 text-white px-4 py-3 text-lg placeholder-gray-500 font-medium">
+                    <button id="extract-btn" onclick="handleExtraction()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all duration-300 active:scale-95 group">
+                        <span>Extract Now</span>
+                        <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
         <p id="error-msg" class="text-rose-400 mt-[-4rem] mb-16 text-center font-medium hidden"></p>
@@ -190,6 +213,91 @@
                         <div class="h-12 w-32 bg-slate-700/50 rounded-xl"></div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Channel Mode: Video Listing -->
+        <div id="channel-video-list-section" class="hidden mb-16 max-w-4xl mx-auto space-y-8 fade-in">
+            <div
+                class="flex flex-col md:flex-row justify-between items-center gap-6 glass p-6 rounded-[2rem] border border-indigo-500/20 shadow-xl shadow-indigo-500/5">
+                <div class="flex items-center gap-4">
+                    <div class="bg-indigo-500/20 p-3 rounded-2xl">
+                        <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-xl" id="channel-name-display">Channel Videos</h3>
+                        <p class="text-indigo-400/60 text-sm font-medium" id="channel-video-count">Select videos to
+                            transcribe</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <div class="relative">
+                            <input type="checkbox" id="select-all-videos" onchange="toggleSelectAll(this)" checked
+                                class="peer sr-only">
+                            <div
+                                class="w-6 h-6 border-2 border-white/10 rounded-lg peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all duration-300">
+                            </div>
+                            <svg class="absolute top-1 left-1 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <span class="text-sm font-bold text-gray-400 group-hover:text-white transition-colors">Select
+                            All</span>
+                    </label>
+
+                    <div class="h-8 w-px bg-white/10"></div>
+
+                    <div class="flex items-center gap-4">
+                        <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em]">Format</span>
+                        <select id="channel-export-type"
+                            class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-4 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                            <option value="txt">.TXT</option>
+                            <option value="csv">.CSV</option>
+                            <option value="md">.MD</option>
+                            <option value="json">.JSON</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="video-grid"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
+                <!-- Videos will be injected here -->
+            </div>
+
+            <div class="flex flex-col items-center gap-6 pt-8 border-t border-white/5">
+                <div class="flex items-center gap-8 bg-slate-900/50 p-4 rounded-3xl border border-white/5 shadow-inner">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-indigo-300/80 uppercase tracking-widest">Include
+                            Timestamps</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="batch-include-timestamps" checked class="sr-only peer">
+                            <div
+                                class="w-12 h-7 bg-slate-800 rounded-full peer peer-checked:bg-indigo-600 transition-all after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-5">
+                            </div>
+                        </label>
+                    </div>
+                    <div class="w-px h-6 bg-white/10"></div>
+                    <div class="text-gray-400 text-xs font-bold uppercase tracking-widest"><span id="selected-count"
+                            class="text-white">0</span> Videos Selected</div>
+                </div>
+
+                <button onclick="downloadSelectedBatch()" id="batch-download-btn"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white px-12 py-5 rounded-[2rem] font-bold text-lg flex items-center gap-4 transition-all duration-300 shadow-2xl shadow-indigo-600/20 active:scale-95 group">
+                    <span>Download ZIP Archive</span>
+                    <svg class="w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                </button>
             </div>
         </div>
 
@@ -284,9 +392,177 @@
         const API_BASE = "http://localhost:8000";
         let currentData = null;
 
+        let currentMode = 'video';
+
+        function setMode(mode) {
+            currentMode = mode;
+            const videoBtn = document.getElementById('video-mode-btn');
+            const channelBtn = document.getElementById('channel-mode-btn');
+            const input = document.getElementById('youtube-url');
+            const icon = document.getElementById('input-icon');
+
+            const channelVideoSection = document.getElementById('channel-video-list-section');
+            const resultSection = document.getElementById('result-section');
+
+            if (mode === 'video') {
+                videoBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
+                videoBtn.classList.remove('text-gray-400');
+                channelBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
+                channelBtn.classList.add('text-gray-400');
+                input.placeholder = "Paste YouTube Video URL here...";
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />`;
+                channelVideoSection.classList.add('hidden');
+            } else {
+                channelBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
+                channelBtn.classList.remove('text-gray-400');
+                videoBtn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg', 'shadow-indigo-500/20');
+                videoBtn.classList.add('text-gray-400');
+                input.placeholder = "Paste YouTube Channel URL here...";
+                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />`;
+                channelVideoSection.classList.add('hidden'); // Stay hidden until list is fetched
+                resultSection.classList.add('hidden');
+            }
+        }
+
+        function handleExtraction() {
+            if (currentMode === 'video') {
+                fetchTranscript();
+            } else {
+                fetchChannelVideoList();
+            }
+        }
+
+        let channelVideos = [];
+
+        async function fetchChannelVideoList() {
+            const urlInput = document.getElementById('youtube-url');
+            const fetchBtn = document.getElementById('extract-btn');
+            const errorMsg = document.getElementById('error-msg');
+            const loadingState = document.getElementById('loading-state');
+            const videoSection = document.getElementById('channel-video-list-section');
+            const videoGrid = document.getElementById('video-grid');
+
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            errorMsg.classList.add('hidden');
+            loadingState.classList.remove('hidden');
+            videoSection.classList.add('hidden');
+            fetchBtn.disabled = true;
+            fetchBtn.innerHTML = `<div class="loading-ring mr-2"></div> Fetching List...`;
+
+            try {
+                const response = await fetch(`${API_BASE}/channel/videos?url=${encodeURIComponent(url)}`);
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.detail || "Failed to fetch channel.");
+
+                channelVideos = data.videos;
+                renderVideoGrid(data.videos);
+
+                videoSection.classList.remove('hidden');
+                document.getElementById('channel-video-count').innerText = `${data.videos.length} videos found. Select to transcribe.`;
+                updateSelectedCount();
+
+                videoSection.scrollIntoView({ behavior: 'smooth' });
+            } catch (err) {
+                errorMsg.innerText = err.message;
+                errorMsg.classList.remove('hidden');
+            } finally {
+                loadingState.classList.add('hidden');
+                fetchBtn.disabled = false;
+                fetchBtn.innerHTML = `<span>Fetch List</span><svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>`;
+            }
+        }
+
+        function renderVideoGrid(videos) {
+            const grid = document.getElementById('video-grid');
+            grid.innerHTML = videos.map((v, i) => `
+                <div class="glass glass-hover p-4 rounded-2xl border border-white/5 flex items-center gap-4 transition-all duration-300">
+                    <label class="flex items-center gap-4 cursor-pointer w-full">
+                        <div class="relative flex-shrink-0">
+                            <input type="checkbox" name="video-select" value="${i}" checked onchange="updateSelectedCount()" class="peer sr-only">
+                            <div class="w-6 h-6 border-2 border-white/10 rounded-lg peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all duration-300"></div>
+                            <svg class="absolute top-1 left-1 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-white font-bold text-sm truncate pr-4">${v.title}</h4>
+                            <p class="text-indigo-400/60 text-[10px] font-bold uppercase tracking-wider mt-1 truncate">YouTube Video</p>
+                        </div>
+                    </label>
+                </div>
+            `).join('');
+        }
+
+        function toggleSelectAll(checkbox) {
+            const checkboxes = document.querySelectorAll('input[name="video-select"]');
+            checkboxes.forEach(cb => cb.checked = checkbox.checked);
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const selected = document.querySelectorAll('input[name="video-select"]:checked').length;
+            document.getElementById('selected-count').innerText = selected;
+            document.getElementById('select-all-videos').checked = selected === channelVideos.length;
+        }
+
+        async function downloadSelectedBatch() {
+            const fetchBtn = document.getElementById('batch-download-btn');
+            const errorMsg = document.getElementById('error-msg');
+            const format = document.getElementById('channel-export-type').value;
+            const includeTimestamps = document.getElementById('batch-include-timestamps').checked;
+            const selectedIndices = Array.from(document.querySelectorAll('input[name="video-select"]:checked')).map(cb => parseInt(cb.value));
+
+            if (selectedIndices.length === 0) {
+                alert("Please select at least one video.");
+                return;
+            }
+
+            const selectedVideos = selectedIndices.map(i => channelVideos[i]);
+
+            errorMsg.classList.add('hidden');
+            fetchBtn.disabled = true;
+            const originalContent = fetchBtn.innerHTML;
+            fetchBtn.innerHTML = `<div class="loading-ring mr-2 text-white"></div> Processing ${selectedVideos.length} Videos...`;
+
+            try {
+                const response = await fetch(`${API_BASE}/channel/zip?format=${format}&include_timestamps=${includeTimestamps}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ videos: selectedVideos })
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.detail || "Batch extraction failed.");
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `channel_batch_${format}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+
+                fetchBtn.innerHTML = `<span>Download Complete!</span>`;
+                setTimeout(() => {
+                    fetchBtn.disabled = false;
+                    fetchBtn.innerHTML = originalContent;
+                }, 3000);
+            } catch (err) {
+                errorMsg.innerText = err.message;
+                errorMsg.classList.remove('hidden');
+                fetchBtn.disabled = false;
+                fetchBtn.innerHTML = originalContent;
+            }
+        }
+
         async function fetchTranscript() {
             const urlInput = document.getElementById('youtube-url');
-            const fetchBtn = document.getElementById('fetch-btn');
+            const fetchBtn = document.getElementById('extract-btn');
             const errorMsg = document.getElementById('error-msg');
             const resultSection = document.getElementById('result-section');
             const loadingState = document.getElementById('loading-state');
@@ -370,6 +646,10 @@
         }
 
         function download(type) {
+            if (currentMode === 'channel') {
+                fetchChannelZip(type);
+                return;
+            }
             if (!currentData) return;
 
             let content = "";
