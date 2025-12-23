@@ -9,7 +9,8 @@ from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 from fastapi import FastAPI, HTTPException, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from youtube_transcript_api.proxies import WebshareProxyConfig
 from dotenv import load_dotenv
@@ -174,6 +175,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files from the frontend directory
+# Assuming frontend files like index.html are in the 'frontend' folder one level up
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse(os.path.join(frontend_path, "index.html"))
 
 # Removed buggy get_random_proxy as get_rotating_proxy_dict is already available and more stable.
 

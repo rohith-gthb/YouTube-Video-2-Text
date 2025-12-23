@@ -178,7 +178,8 @@
                 <div
                     class="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000">
                 </div>
-                <div class="relative flex items-center bg-slate-900 rounded-2xl p-2 border border-white/10 shadow-2xl">
+                <div
+                    class="relative flex items-center bg-slate-900 rounded-2xl p-1.5 border border-white/10 shadow-2xl">
                     <div class="pl-4 text-indigo-400">
                         <svg id="input-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -187,9 +188,9 @@
                     </div>
                     <input type="text" id="youtube-url" placeholder="Paste Video, Playlist, or Channel URL..."
                         oninput="handleUrlInput(this.value)" onkeyup="if(event.key === 'Enter') handleExtraction()"
-                        class="w-full bg-transparent border-none focus:ring-0 text-white px-4 py-3 text-lg placeholder-gray-500 font-medium">
+                        class="w-full bg-transparent border-none focus:ring-0 text-white px-4 py-2 text-lg placeholder-gray-500 font-medium">
                     <button id="extract-btn" onclick="handleExtraction()"
-                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all duration-300 active:scale-95 group">
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-3 transition-all duration-300 active:scale-95 group">
                         <span>Extract Now</span>
                         <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
