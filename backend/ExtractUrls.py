@@ -2,11 +2,16 @@ import re
 import json
 import random
 import requests
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 from typing import List, Dict, Optional
 
-# Proxy credentials (Hardcoded for reliability)
-WEBSHARE_USER = "znxcztag"
-WEBSHARE_PASS = "hi7oonlzr7ea"
+# Proxy credentials
+WEBSHARE_USER = os.getenv("WEBSHARE_USER")
+WEBSHARE_PASS = os.getenv("WEBSHARE_PASS")
 
 # List of common browser User-Agents for rotation
 USER_AGENTS = [

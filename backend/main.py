@@ -22,6 +22,9 @@ import zipfile
 import io
 import http.cookiejar
 
+# Load environment variables
+load_dotenv()
+
 # List of common browser User-Agents for rotation
 # USER_AGENTS = [
 #     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -70,8 +73,8 @@ ytt_api = YouTubeTranscriptApi()
 active_batches = {}
 
 # Proxy and Cookie logic
-WEBSHARE_USER = "znxcztag"
-WEBSHARE_PASS = "hi7oonlzr7ea"
+WEBSHARE_USER = os.getenv("WEBSHARE_USER")
+WEBSHARE_PASS = os.getenv("WEBSHARE_PASS")
 
 def get_webshare_config():
     """Returns a WebshareProxyConfig object for rotating residential proxies."""
@@ -100,9 +103,6 @@ def format_time(seconds: float) -> str:
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     return f"{str(h) + ':' if h > 0 else ''}{str(m).zfill(2)}:{str(s).zfill(2)}"
-
-# Load environment variables
-load_dotenv()
 
 # Setup Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
