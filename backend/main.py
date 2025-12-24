@@ -11,6 +11,8 @@ from fastapi import FastAPI, HTTPException, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from youtube_transcript_api.proxies import WebshareProxyConfig
 from dotenv import load_dotenv
@@ -22,6 +24,9 @@ import asyncio
 import zipfile
 import io
 import http.cookiejar
+
+# Load environment variables
+load_dotenv()
 
 # List of common browser User-Agents for rotation
 # USER_AGENTS = [
@@ -71,8 +76,8 @@ ytt_api = YouTubeTranscriptApi()
 active_batches = {}
 
 # Proxy and Cookie logic
-WEBSHARE_USER = "znxcztag"
-WEBSHARE_PASS = "hi7oonlzr7ea"
+WEBSHARE_USER = os.getenv("WEBSHARE_USER")
+WEBSHARE_PASS = os.getenv("WEBSHARE_PASS")
 
 def get_webshare_config():
     """Returns a WebshareProxyConfig object for rotating residential proxies."""
@@ -101,9 +106,6 @@ def format_time(seconds: float) -> str:
     m = int((seconds % 3600) // 60)
     s = int(seconds % 60)
     return f"{str(h) + ':' if h > 0 else ''}{str(m).zfill(2)}:{str(s).zfill(2)}"
-
-# Load environment variables
-load_dotenv()
 
 # Setup Rate Limiting
 limiter = Limiter(key_func=get_remote_address)
@@ -175,14 +177,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Serve static files from the frontend directory
-frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
-app.mount("/static", StaticFiles(directory=frontend_path), name="static")
-
-@app.get("/")
-async def serve_frontend():
-    return FileResponse(os.path.join(frontend_path, "index.html"))
 
 # Removed buggy get_random_proxy as get_rotating_proxy_dict is already available and more stable.
 
