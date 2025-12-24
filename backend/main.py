@@ -9,7 +9,8 @@ from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 from fastapi import FastAPI, HTTPException, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from youtube_transcript_api.proxies import WebshareProxyConfig
 from dotenv import load_dotenv
@@ -175,6 +176,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve static files from the frontend directory
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
+@app.get("/")
+async def serve_frontend():
+    return FileResponse(os.path.join(frontend_path, "index.html"))
+
 # Removed buggy get_random_proxy as get_rotating_proxy_dict is already available and more stable.
 
 
@@ -281,39 +290,99 @@ def get_formatted_content(video_title: str, video_url: str, segments: List[Dict]
         sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', full_text) if s.strip()]
         return "\n".join(sentences)
 
-@app.get("/transcript")
-@limiter.limit("5/minute")
-async def get_transcript(request: Request, url: str = Query(..., description="The YouTube video URL")):
+@app.get("/video/info")
+@limiter.limit("10/minute")
+async def get_video_metadata(request: Request, url: str = Query(..., description="The YouTube video URL")):
     video_id = extract_video_id(url)
     if not video_id:
         raise HTTPException(status_code=400, detail="Invalid YouTube URL")
 
     video_info = get_video_info(video_id)
     if not video_info:
-        # Fallback to basic info if scraping fails but video ID is valid
         video_info = {
             "title": "YouTube Video",
             "thumbnail": f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
             "author": "YouTube"
         }
 
+    available_languages = []
+    try:
+        proxy_config = get_webshare_config()
+        api = YouTubeTranscriptApi(proxy_config=proxy_config)
+        transcript_list = api.list(video_id)
+        
+        for transcript in transcript_list:
+            available_languages.append({
+                "language": transcript.language,
+                "language_code": transcript.language_code,
+                "is_generated": transcript.is_generated,
+                "is_translatable": transcript.is_translatable
+            })
+    except Exception as e:
+        print(f"Error fetching language list: {e}")
+        # We still return video info even if languages fail
+    
+    return {
+        "video_id": video_id,
+        "info": video_info,
+        "languages": available_languages
+    }
+
+@app.get("/transcript")
+@limiter.limit("5/minute")
+async def get_transcript(
+    request: Request, 
+    url: str = Query(..., description="The YouTube video URL"),
+    lang: str = Query(None, description="The language code for the transcript")
+):
+    video_id = extract_video_id(url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+
+    video_info = get_video_info(video_id)
+    if not video_info:
+        video_info = {
+            "title": "YouTube Video",
+            "thumbnail": f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg",
+            "author": "YouTube"
+        }
+
+    # If no language is specified, we use a priority list or let it fallback to default
+    languages = [lang] if lang else [
+        "en", "es", "hi", "pt", "ru", "id", "de", "fr", "ja", "ko"
+    ]
+
+    transcript_list = None
+    english_full_text = ""
+
     for attempt in range(3):
         try:
             proxy_config = get_webshare_config()
-            print(f"Using Webshare Residential Rotation (Attempt {attempt+1}) for {video_id}")
-            
-            # Create fresh API instance with our config
             api = YouTubeTranscriptApi(proxy_config=proxy_config)
-            transcript_list = api.fetch(video_id)
-            break # Success
+            
+            # 1. Fetch the requested transcript(s)
+            transcript_list = api.fetch(video_id, languages=languages)
+            
+            # 2. Irrespective of the language chosen, also try to get English for RAG
+            try:
+                # If we already fetched English, reuse it
+                if lang == 'en' or (not lang and transcript_list[0].language_code == 'en'):
+                    english_full_text = " ".join([clean_transcript_text(e.text) for e in transcript_list])
+                else:
+                    en_transcript = api.fetch(video_id, languages=['en'])
+                    english_full_text = " ".join([clean_transcript_text(e.text) for e in en_transcript])
+            except Exception as e:
+                print(f"Could not fetch English transcript for RAG: {e}")
+                # We don't fail the whole request if English is missing
+            
+            break 
         except (TranscriptsDisabled, NoTranscriptFound) as e:
-            # Fatal errors, do not retry
             raise e
         except Exception as e:
             print(f"Fetch attempt {attempt+1} failed: {e}")
             if attempt == 2:
                 raise HTTPException(status_code=500, detail=f"Failed to fetch transcript after 3 attempts: {str(e)}")
-            time.sleep(1) # Small delay before retry
+            time.sleep(1)
     
     try:
         formatted_transcript = []
@@ -332,6 +401,8 @@ async def get_transcript(request: Request, url: str = Query(..., description="Th
 
         # Backend Sentence Processing
         full_text = full_text.strip()
+        english_full_text = english_full_text.strip()
+        
         # Split by . ! ? while keeping the delimiters, then group into logical lines
         sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', full_text) if s.strip()]
 
@@ -340,6 +411,7 @@ async def get_transcript(request: Request, url: str = Query(..., description="Th
             "info": video_info,
             "transcript": formatted_transcript,
             "full_text": full_text,
+            "english_full_text": english_full_text, # Added for RAG
             "sentences": sentences
         }
     except TranscriptsDisabled:
