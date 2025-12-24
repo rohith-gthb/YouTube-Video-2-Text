@@ -11,8 +11,6 @@ from fastapi import FastAPI, HTTPException, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from youtube_transcript_api.proxies import WebshareProxyConfig
 from dotenv import load_dotenv
@@ -178,7 +176,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Removed buggy get_random_proxy as get_rotating_proxy_dict is already available and more stable.
+# Serve static files from the frontend directory
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+# Ensure the directory exists before mounting
+if os.path.isdir(frontend_path):
+    app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
+    @app.get("/")
+    async def serve_frontend():
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+else:
+    print(f"Warning: Frontend directory not found at {frontend_path}")
 
 
 def extract_video_id(url: str) -> Optional[str]:

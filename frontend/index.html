@@ -342,7 +342,8 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
                 <!-- Left Column: Video Info & Export Controls -->
-                <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+                <div id="metadata-column"
+                    class="lg:col-span-12 max-w-2xl mx-auto w-full space-y-6 transition-all duration-500">
                     <div class="glass p-6 rounded-[2.5rem] space-y-6">
                         <div class="relative group">
                             <img id="video-thumb" src="" alt="Thumbnail"
@@ -762,7 +763,16 @@
                 if (!response.ok) throw new Error(data.detail || "Failed to fetch transcript.");
 
                 currentData = data;
+
+                // Switch layout to 2 columns
+                const metaCol = document.getElementById('metadata-column');
+                metaCol.classList.remove('lg:col-span-12', 'max-w-2xl', 'mx-auto');
+                metaCol.classList.add('lg:col-span-4');
+                // Make it sticky in 2-column mode
+                metaCol.classList.add('lg:sticky', 'lg:top-8');
+
                 document.getElementById('transcript-column').classList.remove('hidden');
+
                 renderTranscriptUI();
             } catch (err) {
                 transcriptBody.innerHTML = `<div class="p-8 text-center text-rose-400 font-bold">${err.message}</div>`;
@@ -785,6 +795,11 @@
             // Ensure transcript column is hidden initially
             document.getElementById('transcript-column').classList.add('hidden');
             document.getElementById('transcript-body').innerHTML = '';
+
+            // Reset layout to centered
+            const metaCol = document.getElementById('metadata-column');
+            metaCol.classList.remove('lg:col-span-4', 'lg:sticky', 'lg:top-8');
+            metaCol.classList.add('lg:col-span-12', 'max-w-2xl', 'mx-auto');
 
             // Populate language picker
             const picker = document.getElementById('language-picker');

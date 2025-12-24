@@ -1,8 +1,27 @@
+========================================
+    YouTube Video 2 Text System       
+========================================
+Starting Backend Server...
+----------------------------------------
+Backend started on http://localhost:8000
+Frontend available at: file:///Users/rohitchintalapudi99gmail.com/Desktop/YouTube-Video-2-Text/frontend/index.html
+----------------------------------------
+Press Ctrl+C to stop the services.
 /Users/rohitchintalapudi99gmail.com/Desktop/YouTube-Video-2-Text/backend/venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
   warnings.warn(
-INFO:     Started server process [34659]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:58724 - "HEAD / HTTP/1.1" 405 Method Not Allowed
-INFO:     127.0.0.1:58727 - "GET / HTTP/1.1" 200 OK
+Python-dotenv could not parse statement starting at line 9
+Python-dotenv could not parse statement starting at line 10
+Python-dotenv could not parse statement starting at line 11
+Python-dotenv could not parse statement starting at line 12
+Python-dotenv could not parse statement starting at line 13
+Python-dotenv could not parse statement starting at line 14
+Python-dotenv could not parse statement starting at line 15
+Python-dotenv could not parse statement starting at line 9
+Python-dotenv could not parse statement starting at line 10
+Python-dotenv could not parse statement starting at line 11
+Python-dotenv could not parse statement starting at line 12
+Python-dotenv could not parse statement starting at line 13
+Python-dotenv could not parse statement starting at line 14
+Python-dotenv could not parse statement starting at line 15
+INFO:     Will watch for changes in these directories: ['/Users/rohitchintalapudi99gmail.com/Desktop/YouTube-Video-2-Text/backend']
+ERROR:    [Errno 48] Address already in use
