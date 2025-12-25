@@ -9,28 +9,17 @@ from dotenv import load_dotenv
 load_dotenv()
 from typing import List, Dict, Optional
 
-# Proxy credentials
-WEBSHARE_USER = os.getenv("WEBSHARE_USER")
-WEBSHARE_PASS = os.getenv("WEBSHARE_PASS")
-
-# List of common browser User-Agents for rotation
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-]
 
 def get_random_headers():
     return {
-        "User-Agent": random.choice(USER_AGENTS),
+        "User-Agent": random.choice(eval(os.getenv("USER_AGENTS"))),
         "Accept-Language": "en-US,en;q=0.9",
         "Referer": "https://www.google.com/"
     }
 
 def get_rotating_proxy_dict():
     """Returns a proxy dict for 'requests' using Webshare rotating residential endpoint."""
-    proxy_url = f"http://{WEBSHARE_USER}-rotate:{WEBSHARE_PASS}@p.webshare.io:80"
+    proxy_url = f"http://{os.getenv("WEBSHARE_USER")}-rotate:{os.getenv("WEBSHARE_PASS")}@p.webshare.io:80"
     return {"http": proxy_url, "https": proxy_url}
 
 def extract_channel_videos(channel_url: str) -> Optional[List[Dict]]:

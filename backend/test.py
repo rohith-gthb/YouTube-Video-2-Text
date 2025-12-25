@@ -7,7 +7,7 @@ import requests
 import time
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
-
+from ExtractUrls import extract_channel_videos
 from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
 from youtube_transcript_api.proxies import WebshareProxyConfig
 from dotenv import load_dotenv
@@ -17,14 +17,13 @@ import supabase
 
 load_dotenv()
 
-
 # ---------------------------
 # Network and Proxy utilities
 # ---------------------------
 
 def get_random_headers():
     return {
-        "User-Agent": random.choice(os.getenv("USER_AGENTS")),
+        "User-Agent": random.choice(eval(os.getenv("USER_AGENTS"))),
         "Accept-Language": "en-US,en;q=0.9",
     }
 
@@ -48,7 +47,7 @@ def make_request(url: str, retry_count: int = 3):
     for attempt in range(retry_count):
         try:
             print(f"  Attempt {attempt + 1}/{retry_count}...")
-            response = requests.get(url, headers=get_random_headers(), proxies=get_rotating_proxy_dict(), timeout=10)
+            response = requests.get(url, headers=get_random_headers(), proxies=get_rotating_proxy_dict())
             response.raise_for_status()
             print(f"  [Success] URL fetched.")
             return response
@@ -104,8 +103,8 @@ def get_video_info(video_id: str) -> Dict:
 
 def get_transcript(yt_transcript_api: YouTubeTranscriptApi, video_id: str, retry_count: int = 3):
     print(f"[Transcript] Fetching transcript for video: {video_id}")
-    print("Available languages:")
-    print(yt_transcript_api.list(video_id))
+    # print("Available languages:")
+    # print(yt_transcript_api.list(video_id))
     
     top_languages_iso = [
         "en",  # English
@@ -239,15 +238,15 @@ def insert_transcript(conn, video_id: str, transcript: list):
             "created_at": datetime.now(timezone.utc).isoformat()
         }
 
-        transcript_obj_debug = {
-            "video_id": video_id, 
-            "transcript": formatted_transcript[:2],
-            "full_text": full_text[:20],
-            "sentences": sentences[:20],
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        print("[DB] Inserting transcript... ")
-        print(json.dumps(transcript_obj_debug, indent=4))
+        # transcript_obj_debug = {
+        #     "video_id": video_id, 
+        #     "transcript": formatted_transcript[:2],
+        #     "full_text": full_text[:20],
+        #     "sentences": sentences[:20],
+        #     "created_at": datetime.now(timezone.utc).isoformat()
+        # }
+        # print("[DB] Inserting transcript... ")
+        # print(json.dumps(transcript_obj_debug, indent=4))
 
         conn.table("transcripts").insert(transcript_obj).execute()
         print("  [Success] Transcript inserted.")
@@ -256,7 +255,7 @@ def insert_transcript(conn, video_id: str, transcript: list):
         traceback.print_exc()   
 
 def check_video_info(conn, video_id: str):
-    print(f"[DB] Checking video info cache for: {video_id}")
+    # print(f"[DB] Checking video info cache for: {video_id}")
     try:
         response = conn.table("video_info").select("*").eq("video_id", video_id).execute()
         if response.data:
@@ -270,7 +269,7 @@ def check_video_info(conn, video_id: str):
         return None 
 
 def check_transcript(conn, video_id: str):
-    print(f"[DB] Checking transcript cache for: {video_id}")
+    # print(f"[DB] Checking transcript cache for: {video_id}")
     try:
         response = conn.table("transcripts").select("*").eq("video_id", video_id).execute()
         if response.data:
@@ -325,19 +324,89 @@ def get_video_data(yt_transcript_api: YouTubeTranscriptApi, conn, url: str):
         return None 
 
 
+# if __name__ == "__main__":
+#     conn = create_db_connection()
+#     if conn:
+#         url = "https://www.youtube.com/watch?v=ZFoNBxpXen4"
+#         url = "https://www.youtube.com/@afaqueahmad7117"
+#         list_of_videos = []
+#         yt_transcript_api = YouTubeTranscriptApi(proxy_config=get_webshare_config())
+#         if '/watch?' in url:
+#             print("[Process] Extracting video data...")
+#             list_of_videos.append(get_video_data(yt_transcript_api, conn, url))
+#         else:
+#             if '/channel' in url:
+#                 print("[Process] Extracting channel videos...")
+#             else:
+#                 print("[Process] Extracting playlist videos...")
+#             videos = extract_channel_videos(url)
+#             print(videos)
+#             print("** Found", len(videos), "videos")
+#             print(videos)
+#             for video in videos:
+#                 list_of_videos.append(get_video_data(yt_transcript_api, conn, video.get('url')))
+#         print("\n[Result] Video Data Sample:")
+        
+#         if len(list_of_videos) > 0:
+#             video_data = list_of_videos[0]
+#             print(f"  Title: {video_data.get('video_info', {}).get('title')}")
+#             print(f"  Transcript entries: {len(video_data.get('transcript', [])) if video_data.get('transcript') else 0}")
+#         else:
+#             print("  Failed to retrieve data.")
+#     else:
+#         print("[Error] Could not proceed without DB connection.")
+
+
+import concurrent.futures
+from functools import partial
+
+# Wrapper function to handle DB connection safely per thread
+def process_video_safe(video_url, yt_api):
+    # Create a fresh DB connection for this thread to avoid race conditions
+    local_conn = create_db_connection() 
+    # try:
+    if local_conn:
+        return get_video_data(yt_api, local_conn, video_url)
+    # finally:
+    #     if local_conn:
+    #         local_conn.close()
+    return None
+
 if __name__ == "__main__":
-    conn = create_db_connection()
-    if conn:
-        url = "https://www.youtube.com/watch?v=ZFoNBxpXen4"
-        yt_transcript_api = YouTubeTranscriptApi(proxy_config=get_webshare_config())
-        video_data = get_video_data(yt_transcript_api, conn, url)
-        print("\n[Result] Video Data Sample:")
-        if video_data:
-            print(f"  Title: {video_data.get('video_info', {}).get('title')}")
-            print(f"  Transcript entries: {len(video_data.get('transcript', [])) if video_data.get('transcript') else 0}")
-        else:
-            print("  Failed to retrieve data.")
+    # 1. Setup
+    url = "https://www.youtube.com/@AnshLambaJSR/videos"
+    yt_transcript_api = YouTubeTranscriptApi(proxy_config=get_webshare_config())
+    list_of_videos = []
+    
+    # 2. Get the list of URLs (This part is fast enough to keep synchronous)
+    if '/watch?' in url:
+        video_urls = [url]
     else:
-        print("[Error] Could not proceed without DB connection.")
+        print("[Process] Extracting video list...")
+        video_objects = extract_channel_videos(url)
+        video_urls = [v.get('url') for v in video_objects]
+    print(f"** Found {len(video_urls)} videos")
 
+    # 3. Parallel Processing
+    # max_workers=5 is a safe start to avoid getting IP-banned by YouTube
+    print(f"[Process] Fetching data for {len(video_urls)} videos in parallel...")
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit all tasks
+        # partial lets us pass the fixed 'yt_transcript_api' argument
+        worker_func = partial(process_video_safe, yt_api=yt_transcript_api)
+        
+        # as_completed yields results as they finish, not in order
+        future_to_url = {executor.submit(worker_func, url): url for url in video_urls}
+        
+        for future in concurrent.futures.as_completed(future_to_url):
+            try:
+                data = future.result()
+                if data:
+                    list_of_videos.append(data)
+                    print(f"Completed: {data.get('video_info', {}).get('title', 'Unknown')}")
+            except Exception as exc:
+                print(f"[Error] Video processing generated an exception: {exc}")
 
+    # 4. Results
+    print(f"\n[Result] Successfully processed {len(video_urls)} videos.")
